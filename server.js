@@ -13,30 +13,27 @@ wss.on('connection', (ws) => {
 			console.log('Waiting Client Disconnected');
 		});
 	} else {
-		const caller = waitingClient;
-		const callee = ws;
+		const offerer = waitingClient;
+		const answerer = ws;
 		waitingClient = null;
 
-		caller.send(JSON.stringify({ type: "caller"}));
-		callee.send(JSON.stringify({ type: "callee"}));
+		offerer.send(JSON.stringify({ type: "offerer"}));
+		answerer.send(JSON.stringify({ type: "answerer"}));
 
 		const forward = (sender, receiver) => {
 			sender.on('message', (message) => {
-				console.log('someone message')
 				if (receiver.readyState === receiver.OPEN) {
 					receiver.send(message);
 				}
 			});
 			sender.on('close', () => {
-				console.log('someone close')
 				if (receiver.readyState === receiver.OPEN) {
 					receiver.close();
 				}
 			});
 		};
-
-		forward(caller, callee);
-		forward(callee, caller);
+		forward(offerer, answerer);
+		forward(answerer, offerer);
 	}
 });
 
