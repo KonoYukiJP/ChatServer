@@ -27,6 +27,7 @@ wss.on('connection', (ws) => {
 			});
 			sender.on('close', () => {
 				if (receiver.readyState === receiver.OPEN) {
+					receiver.send(JSON.stringify({ type: "disconnect" }));
 					receiver.close();
 				}
 			});
