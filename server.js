@@ -10,7 +10,6 @@ wss.on('connection', (ws) => {
 
 		ws.on('close', () => {
 			waitingClient = null;
-			console.log('Waiting Client Disconnected');
 		});
 	} else {
 		const offerer = waitingClient;
@@ -36,5 +35,3 @@ wss.on('connection', (ws) => {
 		forward(answerer, offerer);
 	}
 });
-
-console.log('Signaling server running on ws://localhost:3000');
