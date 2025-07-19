@@ -1,38 +1,57 @@
 import { WebSocketServer } from 'ws';
 
 const wss = new WebSocketServer({ port: 3000 });
-let waitingClient = null;
+const clientsByCode = new Map();
 
 wss.on('connection', (ws) => {
-	if (waitingClient === null) {
-		waitingClient = ws;
-		ws.send(JSON.stringify({ type: "wait" }));
+    let code = null;
 
-		ws.on('close', () => {
-			waitingClient = null;
-		});
-	} else {
-		const offerer = waitingClient;
-		const answerer = ws;
-		waitingClient = null;
+    const cleanUp = () => {
+        if (code && clientsByCode.get(code) === ws) {
+            clientsByCode.delete(code);
+        }
+    };
 
-		offerer.send(JSON.stringify({ type: "offerer"}));
-		answerer.send(JSON.stringify({ type: "answerer"}));
+    ws.on('message', (message) => {
+        let data;
+        try {
+            data = JSON.parse(message);
+        } catch (e) {
+            return;
+        }
 
-		const forward = (sender, receiver) => {
-			sender.on('message', (message) => {
-				if (receiver.readyState === receiver.OPEN) {
-					receiver.send(message);
-				}
-			});
-			sender.on('close', () => {
-				if (receiver.readyState === receiver.OPEN) {
-					receiver.send(JSON.stringify({ type: "disconnect" }));
-					receiver.close();
-				}
-			});
-		};
-		forward(offerer, answerer);
-		forward(answerer, offerer);
-	}
+        if (data.type === "code" && typeof data.code === "string") {
+            code = data.code;
+
+            if (clientsByCode.has(code)) {
+                const peer = clientsByCode.get(code);
+                clientsByCode.delete(code);
+
+                peer.send(JSON.stringify({ type: "offerer" }));
+                ws.send(JSON.stringify({ type: "answerer" }));
+
+                const forward = (sender, receiver) => {
+                    sender.on('message', (msg) => {
+                        if (receiver.readyState === receiver.OPEN) {
+                            receiver.send(msg);
+                        }
+                    });
+                    sender.on('close', () => {
+                        if (receiver.readyState === receiver.OPEN) {
+                            receiver.send(JSON.stringify({ type: "disconnect" }));
+                            receiver.close();
+                        }
+                    });
+                };
+
+                forward(peer, ws);
+                forward(ws, peer);
+            } else {
+                clientsByCode.set(code, ws);
+                ws.send(JSON.stringify({ type: "wait" }));
+            }
+        }
+    });
+
+    ws.on('close', cleanUp);
 });
