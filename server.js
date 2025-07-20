@@ -22,6 +22,7 @@ wss.on('connection', (ws) => {
 
         if (data.type === "code" && typeof data.code === "string") {
             code = data.code;
+            console.log("Received code:", code);
 
             if (clientsByCode.has(code)) {
                 const peer = clientsByCode.get(code);
